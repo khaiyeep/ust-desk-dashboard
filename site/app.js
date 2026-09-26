@@ -448,8 +448,8 @@
         { note: "Under TPA this matters most. Positive means Treasuries hedge the equity and credit risk elsewhere in the reserves. Negative means they don't." }) +
       card(chartDiv("ch-rv"), "Realised yield vol (1m, annualised)",
         { note: "A stand-in for MOVE. Size in vol-adjusted terms: the same DV01 carries more risk when vol is high." }) + `</div>` +
-      `<h3 class="sub">Liquidity plumbing ($bn, weekly)</h3><div class="minis">${liq.map(([k, n]) => card(chartDiv("ch-l-" + k, "mini"), n)).join("")}</div>` +
-      `<p class="note">Scarce reserves plus a TGA rebuild mean funding pressure in the front end and swap spreads.</p>` +
+      `<h3 class="sub">Liquidity plumbing ($bn)</h3><div class="minis">${liq.map(([k, n]) => card(chartDiv("ch-l-" + k, "mini"), n)).join("")}</div>` +
+      `<p class="note">Scarce reserves plus a TGA rebuild mean funding pressure in the front end and swap spreads. Reserves are weekly; TGA and RRP are daily.</p>` +
       `<h3 class="sub">FX and risk sentiment</h3><div class="minis">${fx.map(([k, n]) => card(chartDiv("ch-x-" + k, "mini"), n)).join("")}</div>`;
     if (sb) plot("ch-sb", lineChart([{ name: "Corr(S&P return, 10Y Δy), 3m", s: U.tail(sb, 750) }], { zero: true }));
     plot("ch-rv", lineChart(["2Y", "10Y", "30Y"].map((t) => ({ name: t, s: U.tail(U.clean(rv[t]), 750) })), { unit: "bp", fmt: ".0f" }));
@@ -591,8 +591,8 @@
   }
   function renderFooter() {
     const warn = S.warnings.length ? `<ul>${S.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>` : "";
-    $("#foot").innerHTML = `<p>Sources: U.S. Treasury daily par yield curves (nominal and TIPS); Treasury FiscalData auctions API; NY Fed reference rates; ` +
-      `FRED (St. Louis Fed) for the term premium, S&amp;P 500, VIX, USD, USD/MYR, reserves, TGA and RRP; federalreserve.gov for FOMC dates. ` +
+    $("#foot").innerHTML = `<p>Sources: U.S. Treasury daily par yield curves (nominal and TIPS); Treasury FiscalData (auctions, TGA); NY Fed (EFFR, SOFR, reverse repo); ` +
+      `FRED (St. Louis Fed) for the term premium, S&amp;P 500, VIX, USD, USD/MYR and bank reserves; federalreserve.gov for FOMC dates. ` +
       `Curve, TIPS, auctions, EFFR and SOFR refresh live in your browser; the FRED series update with the daily build.</p>${warn}`;
   }
   function renderAll() {

@@ -11,7 +11,9 @@ Sources (free, no keys):
 from __future__ import annotations
 
 import io
+import os
 import re
+import time
 import datetime as dt
 from concurrent.futures import ThreadPoolExecutor
 
@@ -28,6 +30,9 @@ TREASURY_URL = (
     "daily-treasury-rates.csv/{year}/all?type={kind}&field_tdr_date_value={year}&page&_format=csv"
 )
 FRED_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={sid}&cosd={start}"
+FRED_API = "https://api.stlouisfed.org/fred/series/observations"
+NYFED = "https://markets.newyorkfed.org/api"
+DTS_CASH = "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/dts/operating_cash_balance"
 AUCTIONS_URL = "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/auctions_query"
 FOMC_URL = "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
 
@@ -97,15 +102,34 @@ def load_treasury_curve(kind: str = "nominal", years: int = config.HISTORY_YEARS
 # ---------------------------------------------------------------------------
 # FRED
 # ---------------------------------------------------------------------------
+def _fred_fetch(sid: str, start: str) -> pd.Series:
+    """FRED API when FRED_API_KEY is set (reliable from cloud runners), else the public CSV."""
+    key = os.environ.get("FRED_API_KEY")
+    last_err = None
+    for attempt in range(2):
+        try:
+            if key:
+                obs = _get(FRED_API, params={"series_id": sid, "api_key": key, "file_type": "json",
+                                             "observation_start": start}).json()["observations"]
+                s = pd.Series({pd.Timestamp(o["date"]): o["value"] for o in obs})
+            else:
+                text = _get(FRED_URL.format(sid=sid, start=start)).text
+                s = pd.read_csv(io.StringIO(text), index_col=0, parse_dates=True).iloc[:, 0]
+            s = pd.to_numeric(s, errors="coerce").dropna()
+            s.name = sid
+            return s
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            time.sleep(3 * (attempt + 1))
+    raise last_err
+
+
 def _fred_one(sid: str, start: str, offline: bool) -> pd.Series:
     path = _cache_path(f"fred_{sid}.csv")
     if offline and path.exists():
         return pd.read_csv(path, index_col=0, parse_dates=True).iloc[:, 0]
     try:
-        text = _get(FRED_URL.format(sid=sid, start=start)).text
-        s = pd.read_csv(io.StringIO(text), index_col=0, parse_dates=True).iloc[:, 0]
-        s = pd.to_numeric(s, errors="coerce").dropna()
-        s.name = sid
+        s = _fred_fetch(sid, start)
         s.to_frame().to_csv(path)
         return s
     except Exception as e:
@@ -120,9 +144,41 @@ def load_fred(series=None, years: int = config.HISTORY_YEARS + 1,
               offline: bool = False) -> dict[str, pd.Series]:
     series = list(series or config.FRED_SERIES)
     start = (dt.date.today() - dt.timedelta(days=365 * years)).isoformat()
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=4) as ex:
         out = list(ex.map(lambda s: _fred_one(s, start, offline), series))
     return dict(zip(series, out))
+
+
+# ---------------------------------------------------------------------------
+# NY Fed rates and reverse repo, Treasury cash balance (TGA)
+# ---------------------------------------------------------------------------
+def load_nyfed_rate(kind: str, years: int = config.HISTORY_YEARS + 1) -> pd.Series:
+    """EFFR or SOFR (%), daily, from the NY Fed markets API."""
+    path = {"EFFR": "rates/unsecured/effr", "SOFR": "rates/secured/sofr"}[kind]
+    start = (dt.date.today() - dt.timedelta(days=365 * years)).isoformat()
+    rows = _get(f"{NYFED}/{path}/search.json",
+                params={"startDate": start, "endDate": dt.date.today().isoformat()}).json()["refRates"]
+    s = pd.Series({pd.Timestamp(r["effectiveDate"]): r["percentRate"] for r in rows}, name=kind)
+    return pd.to_numeric(s, errors="coerce").dropna().sort_index()
+
+
+def load_nyfed_rrp(years: int = config.HISTORY_YEARS + 1) -> pd.Series:
+    """Overnight reverse repo take-up ($bn), daily, from the NY Fed markets API."""
+    start = (dt.date.today() - dt.timedelta(days=365 * years)).isoformat()
+    ops = _get(f"{NYFED}/rp/reverserepo/propositions/search.json",
+               params={"startDate": start, "endDate": dt.date.today().isoformat()}).json()["repo"]["operations"]
+    s = pd.Series({pd.Timestamp(o["operationDate"]): o["totalAmtAccepted"] for o in ops}, name="RRP")
+    return (pd.to_numeric(s, errors="coerce").dropna() / 1e9).groupby(level=0).sum().sort_index()
+
+
+def load_tga(years: int = config.HISTORY_YEARS + 1) -> pd.Series:
+    """Treasury General Account closing balance ($mn), daily, from the Daily Treasury Statement."""
+    start = (dt.date.today() - dt.timedelta(days=365 * years)).isoformat()
+    params = {"filter": f"record_date:gte:{start},account_type:eq:Treasury General Account (TGA) Closing Balance",
+              "fields": "record_date,open_today_bal", "page[size]": 10000}
+    rows = _get(DTS_CASH, params=params).json()["data"]
+    s = pd.Series({pd.Timestamp(r["record_date"]): r["open_today_bal"] for r in rows}, name="TGA")
+    return pd.to_numeric(s, errors="coerce").dropna().sort_index()
 
 
 # ---------------------------------------------------------------------------

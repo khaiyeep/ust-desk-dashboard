@@ -22,10 +22,30 @@ from ust_dash import sources as S  # noqa: E402
 
 SITE = config.ROOT / "site"
 
-# Series the browser can't fetch itself (FRED has no CORS). TIPS real yields
-# and breakevens come from the Treasury real curve instead.
-FRED_FOR_SITE = ["EFFR", "SOFR", "IORB", "THREEFYTP10", "VIXCLS", "SP500",
-                 "DTWEXBGS", "DEXMAUS", "WRESBAL", "WTREGEN", "RRPONTSYD"]
+# Series only FRED has. FRED often times out from cloud runners; set a free
+# FRED_API_KEY repo secret to use the official API instead. TIPS real yields
+# and breakevens come from the Treasury real curve.
+FRED_FOR_SITE = ["THREEFYTP10", "VIXCLS", "SP500", "DTWEXBGS", "DEXMAUS", "WRESBAL"]
+
+# Same keys the page reads, sourced from the NY Fed and Treasury instead of FRED.
+# WTREGEN stays in $mn to match FRED's units.
+DIRECT = {
+    "EFFR": lambda: S.load_nyfed_rate("EFFR"),
+    "SOFR": lambda: S.load_nyfed_rate("SOFR"),
+    "RRPONTSYD": S.load_nyfed_rrp,
+    "WTREGEN": S.load_tga,
+}
+
+
+def load_series() -> dict:
+    out = {sid: series_json(s) for sid, s in S.load_fred(FRED_FOR_SITE).items()}
+    for sid, fn in DIRECT.items():
+        try:
+            out[sid] = series_json(fn())
+        except Exception as e:  # noqa: BLE001
+            S.log_lines.append(f"[warn] {sid}: {e}")
+            out[sid] = {"dates": [], "values": []}
+    return out
 
 
 def _num(v):
@@ -72,7 +92,7 @@ def main() -> None:
     steps = {
         "nominal": lambda: frame_json(S.load_treasury_curve("nominal")),
         "real": lambda: frame_json(S.load_treasury_curve("real")),
-        "fred": lambda: {sid: series_json(s) for sid, s in S.load_fred(FRED_FOR_SITE).items()},
+        "fred": load_series,
         "auctions": lambda: _auctions_json(S.load_auctions()),
         "fomc": lambda: [[d.isoformat(), sep] for d, sep in S.load_fomc()],
     }
@@ -84,10 +104,11 @@ def main() -> None:
                 raise
             S.log_lines.append(f"[warn] {key}: {e} - kept previous build's data")
             data[key] = prev[key]
-    # FRED series that failed individually come back empty - fall back to the previous copy.
+    # Series that failed individually come back empty - fall back to the previous copy.
     for sid, s in data["fred"].items():
         if not s["dates"] and sid in prev.get("fred", {}):
             data["fred"][sid] = prev["fred"][sid]
+            S.log_lines.append(f"[info] {sid}: kept previous build's data")
     if not data["auctions"] and prev.get("auctions"):
         data["auctions"] = prev["auctions"]
     data["warnings"] = S.log_lines

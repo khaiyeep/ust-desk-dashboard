@@ -36,6 +36,8 @@ jobs:
 
       - name: Build site/data.json
         run: python build_site.py
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}   # optional, see README
 
       # Keeps a daily history in git, and the activity stops GitHub from
       # pausing the schedule after 60 quiet days.

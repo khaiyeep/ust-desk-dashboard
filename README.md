@@ -22,6 +22,18 @@ hosted on GitHub Pages.
 You can also run the build yourself: in the GitHub app or website, go to
 **Actions → Refresh data and publish site → Run workflow**.
 
+**FRED from GitHub Actions.** FRED's public download often times out from
+cloud servers. When that happens, the build keeps the previous copy of those
+series (term premium, S&P 500, VIX, USD, USD/MYR, reserves) and notes it in the
+page footer. To make these update reliably:
+
+1. Get a free API key at https://fredaccount.stlouisfed.org/apikeys.
+2. Run `gh secret set FRED_API_KEY` in this folder and paste the key when
+   prompted.
+
+EFFR, SOFR, reverse repo and TGA come from the NY Fed and Treasury, so they
+don't depend on FRED.
+
 **Your positions.** Enter key-rate durations under **Book setup**, either by
 typing them or pasting rows copied from Excel or PORT. They are saved in that
 browser only and are never uploaded. To get the same numbers on your phone,
