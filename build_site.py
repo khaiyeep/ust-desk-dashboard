@@ -105,17 +105,23 @@ def main() -> None:
             S.log_lines.append(f"[warn] {key}: {e} - kept previous build's data")
             data[key] = prev[key]
     # Series that failed individually come back empty - fall back to the previous copy.
+    kept = []
     for sid, s in data["fred"].items():
         if not s["dates"] and sid in prev.get("fred", {}):
             data["fred"][sid] = prev["fred"][sid]
-            S.log_lines.append(f"[info] {sid}: kept previous build's data")
+            kept.append(sid)
     if not data["auctions"] and prev.get("auctions"):
         data["auctions"] = prev["auctions"]
-    data["warnings"] = S.log_lines
+    # One readable line for the page footer instead of a line per failed series.
+    warnings = [w for w in S.log_lines if not w.startswith("[warn] FRED ")]
+    if kept:
+        warnings.append(f"FRED didn't respond to this build, so these series show their last good copy "
+                        f"(see each tile's as-of date): {', '.join(kept)}. A FRED_API_KEY secret fixes this.")
+    data["warnings"] = warnings
     SITE.mkdir(exist_ok=True)
     out.write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
     print(f"Wrote {out} ({out.stat().st_size / 1e3:,.0f} kB), curve to {data['nominal']['dates'][-1]}")
-    for w in S.log_lines:
+    for w in warnings:
         print(w)
 
 
