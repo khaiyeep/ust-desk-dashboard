@@ -1,0 +1,6 @@
+data/cache/
+output/
+__pycache__/
+.DS_Store
+# Personal notes - kept out of the public repo
+PLAYBOOK.md

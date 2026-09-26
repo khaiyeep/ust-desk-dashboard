@@ -1,0 +1,14 @@
+# Active risk input: key-rate durations (years) for your portfolio and the benchmark.
+# EXAMPLE NUMBERS - replace with an export from Bloomberg PORT (Characteristics > Key Rate Duration)
+# or your risk system. Tenors must be: 3M,6M,1Y,2Y,3Y,5Y,7Y,10Y,20Y,30Y. Missing tenors = 0.
+tenor,portfolio_krd,benchmark_krd
+3M,0.03,0.02
+6M,0.05,0.05
+1Y,0.15,0.15
+2Y,0.40,0.45
+3Y,0.55,0.55
+5Y,1.10,0.95
+7Y,0.95,0.90
+10Y,1.10,1.05
+20Y,0.70,0.80
+30Y,0.80,0.95

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="UST Desk">
+<title>UST Desk Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232a78d6'/%3E%3Cpath d='M6 22 C11 21 14 15 26 10' stroke='white' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/3.0.1/plotly-basic.min.js" defer></script>
+<script src="analytics.js" defer></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <div class="bar">
+    <div class="brand">
+      <h1>UST Desk Dashboard</h1>
+      <span id="asof" class="asof">Loading data…</span>
+    </div>
+    <div class="actions">
+      <button id="refresh" class="btn primary" type="button">Refresh</button>
+      <button id="theme" class="btn icon" type="button" aria-label="Switch between light and dark">◐</button>
+    </div>
+  </div>
+  <nav class="nav" aria-label="Sections">
+    <a href="#brief">Brief</a><a href="#curve">Curve</a><a href="#rv">Spreads</a><a href="#policy">Policy</a>
+    <a href="#book">Book</a><a href="#carry">Carry &amp; PCA</a><a href="#cross">Cross-asset</a><a href="#supply">Supply</a>
+    <a href="#setup">Book setup</a>
+  </nav>
+</header>
+
+<main>
+  <p id="status" class="status" role="status">Loading the daily data file…</p>
+  <p id="example-banner" class="banner" hidden>The book numbers use example positions. <a href="#setup">Enter your key-rate durations</a> to see your own risk.</p>
+
+  <section id="brief"><h2>Morning brief</h2><div id="brief-body"></div></section>
+  <section id="curve"><h2>Curve</h2><div id="curve-body"></div></section>
+  <section id="rv"><h2>Curve spreads and flies</h2><div id="rv-body"></div></section>
+  <section id="policy"><h2>Policy, inflation and term premium</h2><div id="policy-body"></div></section>
+  <section id="book"><h2>Active book vs benchmark</h2><div id="book-body"></div></section>
+  <section id="carry"><h2>Carry, roll-down and curve factors</h2><div id="carry-body"></div></section>
+  <section id="cross"><h2>Cross-asset, vol and liquidity</h2><div id="cross-body"></div></section>
+  <section id="supply"><h2>Supply and calendar</h2><div id="supply-body"></div></section>
+  <section id="setup"><h2>Book setup</h2><div id="setup-body"></div></section>
+
+  <footer id="foot"></footer>
+</main>
+</body>
+</html>
